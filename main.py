@@ -336,21 +336,160 @@ def show_patients():
 # ==========================================================
 # DOCTORS
 # ==========================================================
+# ==========================================================
+# DOCTORS FULL CRUD
+# ==========================================================
 def show_doctors():
     clear_content()
-    header.config(text="Doctors")
+    header.config(text="Doctors Management")
 
-    form = tk.Frame(content,bg="#0b1120")
+    # ---------------- FORM ----------------
+    form = tk.Frame(content, bg="#0b1120")
     form.pack(pady=10)
 
-    tk.Label(form,text="Name",bg="#0b1120",fg="white").grid(row=0,column=0,pady=5)
-    tk.Label(form,text="Specialization",bg="#0b1120",fg="white").grid(row=1,column=0,pady=5)
+    tk.Label(form, text="Doctor Name", bg="#0b1120", fg="white").grid(row=0,column=0,padx=8,pady=5)
+    tk.Label(form, text="Specialization", bg="#0b1120", fg="white").grid(row=1,column=0,padx=8,pady=5)
 
-    name = tk.Entry(form,width=28)
-    spec = tk.Entry(form,width=28)
+    name = tk.Entry(form, width=28)
+    spec = tk.Entry(form, width=28)
 
     name.grid(row=0,column=1,pady=5)
     spec.grid(row=1,column=1,pady=5)
+
+    # ---------------- SEARCH ----------------
+    search_frame = tk.Frame(content, bg="#0b1120")
+    search_frame.pack(pady=5)
+
+    tk.Label(search_frame, text="Search:", bg="#0b1120", fg="white").pack(side="left")
+    search_box = tk.Entry(search_frame, width=28)
+    search_box.pack(side="left", padx=5)
+
+    #---------------- TABLE ----------------
+    tree = ttk.Treeview(
+        content,
+        columns=("ID","Name","Specialization"),
+        show="headings",
+        height=12
+    )
+
+    for c in ("ID","Name","Specialization"):
+        tree.heading(c,text=c,anchor="center")
+        tree.column(c,width=220,anchor="center")
+
+    #tree.pack(pady=12)
+
+    def clear_fields():
+        name.delete(0, tk.END)
+        spec.delete(0, tk.END)
+
+    def load(rows=None):
+        for i in tree.get_children():
+            tree.delete(i)
+
+        if rows is None:
+            cur.execute("SELECT * FROM doctors")
+            rows = cur.fetchall()
+
+        for row in rows:
+            tree.insert("", "end", values=row)
+
+    load()
+
+    # ---------------- SELECT ----------------
+    def select_row(event):
+        sel = tree.selection()
+        if not sel:
+            return
+
+        row = tree.item(sel[0])["values"]
+
+        clear_fields()
+        name.insert(0, row[1])
+        spec.insert(0, row[2])
+
+    tree.bind("<<TreeviewSelect>>", select_row)
+
+    # ---------------- ADD ----------------
+    def add_doctor():
+        if name.get().strip() == "" or spec.get().strip() == "":
+            messagebox.showerror("Error","All fields required")
+            return
+
+        cur.execute("""
+        INSERT INTO doctors(name,specialization)
+        VALUES(?,?)
+        """,(name.get().strip(), spec.get().strip()))
+
+        conn.commit()
+        clear_fields()
+        load()
+
+    # ---------------- UPDATE ----------------
+    def update_doctor():
+        sel = tree.selection()
+
+        if not sel:
+            messagebox.showerror("Error","Select doctor")
+            return
+
+        row_id = tree.item(sel[0])["values"][0]
+
+        cur.execute("""
+        UPDATE doctors
+        SET name=?, specialization=?
+        WHERE id=?
+        """,(name.get().strip(), spec.get().strip(), row_id))
+
+        conn.commit()
+        clear_fields()
+        load()
+
+    # ---------------- DELETE ----------------
+    def delete_doctor():
+        sel = tree.selection()
+
+        if not sel:
+            messagebox.showerror("Error","Select doctor")
+            return
+
+        row_id = tree.item(sel[0])["values"][0]
+
+        cur.execute("DELETE FROM doctors WHERE id=?", (row_id,))
+        conn.commit()
+
+        clear_fields()
+        load()
+
+    # ---------------- SEARCH ----------------
+    def search_doctor():
+        key = search_box.get().strip()
+
+        cur.execute("""
+        SELECT * FROM doctors
+        WHERE name LIKE ?
+        OR specialization LIKE ?
+        """,(f"%{key}%", f"%{key}%"))
+
+        load(cur.fetchall())
+
+    # ---------------- BUTTONS ----------------
+    btn = tk.Frame(content, bg="#0b1120")
+    btn.pack(pady=8)
+
+    tk.Button(btn,text="Add",bg="#16a34a",fg="white",
+              width=14,command=add_doctor).grid(row=0,column=0,padx=5)
+
+    tk.Button(btn,text="Update",bg="#2563eb",fg="white",
+              width=14,command=update_doctor).grid(row=0,column=1,padx=5)
+
+    tk.Button(btn,text="Delete",bg="#dc2626",fg="white",
+              width=14,command=delete_doctor).grid(row=0,column=2,padx=5)
+
+    tk.Button(btn,text="Search",bg="#f59e0b",fg="white",
+              width=14,command=search_doctor).grid(row=0,column=3,padx=5)
+
+    tk.Button(btn,text="Refresh",bg="#6b7280",fg="white",
+              width=14,command=load).grid(row=0,column=4,padx=5)
 
     def add_doctor():
         cur.execute("""
@@ -383,18 +522,22 @@ def show_doctors():
 # ==========================================================
 # APPOINTMENTS WITH DOCTOR DROPDOWN
 # ==========================================================
+# ==========================================================
+# APPOINTMENTS FULL CRUD
+# ==========================================================
 def show_appointments():
     clear_content()
-    header.config(text="Appointments")
+    header.config(text="Appointments Management")
 
-    form = tk.Frame(content,bg="#0b1120")
+    # ---------------- FORM ----------------
+    form = tk.Frame(content, bg="#0b1120")
     form.pack(pady=10)
 
-    tk.Label(form,text="Patient Name",bg="#0b1120",fg="white").grid(row=0,column=0,pady=5)
+    tk.Label(form,text="Patient Name",bg="#0b1120",fg="white").grid(row=0,column=0,padx=8,pady=5)
     patient = tk.Entry(form,width=28)
     patient.grid(row=0,column=1,pady=5)
 
-    tk.Label(form,text="Doctor Name",bg="#0b1120",fg="white").grid(row=1,column=0,pady=5)
+    tk.Label(form,text="Doctor",bg="#0b1120",fg="white").grid(row=1,column=0,pady=5)
 
     cur.execute("SELECT name FROM doctors")
     doctors = [r[0] for r in cur.fetchall()]
@@ -419,27 +562,15 @@ def show_appointments():
     date.grid(row=2,column=1,pady=5)
     time.grid(row=3,column=1,pady=5)
 
-    def add_app():
-        if patient.get().strip() == "":
-            messagebox.showerror("Error","Enter patient name")
-            return
+    # ---------------- SEARCH ----------------
+    search_frame = tk.Frame(content, bg="#0b1120")
+    search_frame.pack(pady=5)
 
-        cur.execute("""
-        INSERT INTO appointments(patient_name,doctor_name,date,time)
-        VALUES(?,?,?,?)
-        """,(
-            patient.get(),
-            doctor.get(),
-            date.get(),
-            time.get()
-        ))
-        conn.commit()
-        show_appointments()
+    tk.Label(search_frame,text="Search:",bg="#0b1120",fg="white").pack(side="left")
+    search_box = tk.Entry(search_frame,width=28)
+    search_box.pack(side="left",padx=5)
 
-    tk.Button(form,text="Book Appointment",
-              bg="#2563eb",fg="white",
-              width=18,command=add_app).grid(row=5,column=1,pady=10)
-
+    # ---------------- TABLE ----------------
     tree = ttk.Treeview(
         content,
         columns=("ID","Patient","Doctor","Date","Time"),
@@ -451,11 +582,136 @@ def show_appointments():
         tree.heading(c,text=c,anchor="center")
         tree.column(c,width=170,anchor="center")
 
-    tree.pack(pady=15)
+    tree.pack(pady=12)
 
-    cur.execute("SELECT * FROM appointments")
-    for row in cur.fetchall():
-        tree.insert("", "end", values=row)
+    def clear_fields():
+        patient.delete(0, tk.END)
+        date.delete(0, tk.END)
+        time.delete(0, tk.END)
+
+    def load(rows=None):
+        for i in tree.get_children():
+            tree.delete(i)
+
+        if rows is None:
+            cur.execute("SELECT * FROM appointments")
+            rows = cur.fetchall()
+
+        for row in rows:
+            tree.insert("", "end", values=row)
+
+    load()
+
+    # ---------------- SELECT ----------------
+    def select_row(event):
+        sel = tree.selection()
+        if not sel:
+            return
+
+        row = tree.item(sel[0])["values"]
+
+        clear_fields()
+
+        patient.insert(0,row[1])
+        doctor.set(row[2])
+        date.insert(0,row[3])
+        time.insert(0,row[4])
+
+    tree.bind("<<TreeviewSelect>>", select_row)
+
+    # ---------------- ADD ----------------
+    def add_app():
+        if patient.get().strip() == "":
+            messagebox.showerror("Error","Patient name required")
+            return
+
+        cur.execute("""
+        INSERT INTO appointments(patient_name,doctor_name,date,time)
+        VALUES(?,?,?,?)
+        """,(
+            patient.get().strip(),
+            doctor.get(),
+            date.get().strip(),
+            time.get().strip()
+        ))
+
+        conn.commit()
+        clear_fields()
+        load()
+
+    # ---------------- UPDATE ----------------
+    def update_app():
+        sel = tree.selection()
+
+        if not sel:
+            messagebox.showerror("Error","Select appointment")
+            return
+
+        row_id = tree.item(sel[0])["values"][0]
+
+        cur.execute("""
+        UPDATE appointments
+        SET patient_name=?, doctor_name=?, date=?, time=?
+        WHERE id=?
+        """,(
+            patient.get().strip(),
+            doctor.get(),
+            date.get().strip(),
+            time.get().strip(),
+            row_id
+        ))
+
+        conn.commit()
+        clear_fields()
+        load()
+
+    # ---------------- DELETE ----------------
+    def delete_app():
+        sel = tree.selection()
+
+        if not sel:
+            messagebox.showerror("Error","Select appointment")
+            return
+
+        row_id = tree.item(sel[0])["values"][0]
+
+        cur.execute("DELETE FROM appointments WHERE id=?", (row_id,))
+        conn.commit()
+
+        clear_fields()
+        load()
+
+    # ---------------- SEARCH ----------------
+    def search_app():
+        key = search_box.get().strip()
+
+        cur.execute("""
+        SELECT * FROM appointments
+        WHERE patient_name LIKE ?
+        OR doctor_name LIKE ?
+        OR date LIKE ?
+        """,(f"%{key}%",f"%{key}%",f"%{key}%"))
+
+        load(cur.fetchall())
+
+    # ---------------- BUTTONS ----------------
+    btn = tk.Frame(content, bg="#0b1120")
+    btn.pack(pady=8)
+
+    tk.Button(btn,text="Book",bg="#16a34a",fg="white",
+              width=14,command=add_app).grid(row=0,column=0,padx=5)
+
+    tk.Button(btn,text="Update",bg="#2563eb",fg="white",
+              width=14,command=update_app).grid(row=0,column=1,padx=5)
+
+    tk.Button(btn,text="Cancel",bg="#dc2626",fg="white",
+              width=14,command=delete_app).grid(row=0,column=2,padx=5)
+
+    tk.Button(btn,text="Search",bg="#f59e0b",fg="white",
+              width=14,command=search_app).grid(row=0,column=3,padx=5)
+
+    tk.Button(btn,text="Refresh",bg="#6b7280",fg="white",
+              width=14,command=load).grid(row=0,column=4,padx=5)
 
 # ==========================================================
 # BILLING
