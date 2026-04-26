@@ -1,2 +1,38 @@
-.pdf
-.venv
+
+# .gitignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE files
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database
+hospital.db
+
+# Generated reports
+*.pdf
+
+# Logs
+*.log
+
+# Build files
+dist/
+build/
+*.spec
+
+# Temporary files
+*.tmp
